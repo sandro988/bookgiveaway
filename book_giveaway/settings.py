@@ -43,6 +43,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # 3rd party apps
     "rest_framework",
+    "rest_framework.authtoken",
+    "dj_rest_auth",
+    "drf_spectacular",
     # Local apps
     "accounts.apps.AccountsConfig",
 ]
@@ -136,3 +139,26 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 AUTH_USER_MODEL = "accounts.CustomUser"
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",  # For DRF browsable API.
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+REST_AUTH = {
+    "LOGIN_SERIALIZER": "accounts.serializers.LoginSerializer",  # Using my own serializer defined in accounts/serializers.py.
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Book Giveaway API Project",
+    "DESCRIPTION": """RESTful API for a Book Giveaway Service where registered users 
+    can offer books for free and also take books that are offered by others.""",
+    "VERSION": "1.0.0",
+}
