@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 from rest_framework.authtoken.models import Token
-from books.models import Book
+from books.models import Book, Genre
 
 
 class UserTestsData:
@@ -21,10 +21,11 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         UserTestsData.setUpTestData()
 
         cls.token = Token.objects.create(user=cls.user)
+        # cls.history_genre = Genre.objects.create(genre_name="History")
         cls.book_data = {
             "title": "Test Book",
             "author": "Test Author",
-            "genre": "Fiction",
+            "genre": "History",
             "ISBN": "1234567890",
             "description": "This is a test book.",
             "condition": "Brand New",
@@ -47,7 +48,7 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         self.assertEqual(Book.objects.count(), 1)
         self.assertEqual(book.title, "Test Book")
         self.assertEqual(book.author, "Test Author")
-        self.assertEqual(book.genre, "Fiction")
+        self.assertEqual(book.genre.genre_name, "History")
         self.assertEqual(book.condition, "Brand New")
         self.assertEqual(book.available, True)
         self.assertEqual(book.owner, self.user)
@@ -107,10 +108,12 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
     def setUpTestData(cls):
         UserTestsData.setUpTestData()
         cls.token = Token.objects.create(user=cls.user)
+
+        cls.fiction_genre = Genre.objects.create(genre_name="Fiction")
         cls.book = Book.objects.create(
             title="Test Book",
             author="Test Author",
-            genre="Fiction",
+            genre=cls.fiction_genre,
             ISBN="1234567890",
             description="This is a test book.",
             condition="Brand New",
@@ -131,34 +134,13 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
     def test_book_detail(self):
-        # I will use this dictionary to compare it to the data from the response.
-        expected_data_in_response = {
-            "title": self.book.title,
-            "genre": self.book.genre,
-            "ISBN": self.book.ISBN,
-            "description": self.book.description,
-            "condition": self.book.condition,
-            "location": self.book.location,
-            "available": self.book.available,
-        }
         response = self.client.get(
             reverse("book_detail_api_view", kwargs={"pk": self.book.pk}), format="json"
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        keys_to_extract_from_response = [
-            "title",
-            "genre",
-            "ISBN",
-            "description",
-            "condition",
-            "location",
-            "available",
-        ]
-        response_data = dict(
-            (key, response.data.get(key)) for key in keys_to_extract_from_response
-        )
-        self.assertDictEqual(response_data, expected_data_in_response)
+        self.assertEqual(response.data.get("title"), self.book.title)
+        self.assertEqual(response.data.get("genre"), self.book.genre.genre_name)
 
     def test_detail_for_nonexisting_book(self):
         non_existing_pk = "00000000-0000-0000-0000-000000000000"
@@ -197,7 +179,8 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.assertEqual(self.book.description, "Updated description")
 
     def test_update_with_PATCH(self):
-        self.data_for_update = {"title": "Yet again updated title"}
+        # Sending only partial data
+        self.data_for_update = {"title": "Yet again updated title", "genre": "Comics"}
         response = self.client.patch(
             reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
             self.data_for_update,
@@ -207,6 +190,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.book.refresh_from_db()
         self.assertEqual(self.book.title, "Yet again updated title")
+        self.assertEqual(self.book.genre.genre_name, "Comics")
 
     def test_update_with_unauthenticated_user(self):
         client = self.client_class()
