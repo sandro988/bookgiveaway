@@ -48,6 +48,9 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Local apps
     "accounts.apps.AccountsConfig",
+    "books.apps.BooksConfig",
+    # Django cleanup
+    "django_cleanup.apps.CleanupConfig",
 ]
 
 MIDDLEWARE = [
@@ -132,6 +135,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
@@ -146,7 +152,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",  # For DRF browsable API.
         "rest_framework.authentication.TokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -161,4 +166,5 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": """RESTful API for a Book Giveaway Service where registered users 
     can offer books for free and also take books that are offered by others.""",
     "VERSION": "1.0.0",
+    "COMPONENT_SPLIT_REQUEST": True,
 }
