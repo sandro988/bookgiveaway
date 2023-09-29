@@ -28,6 +28,7 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
             "ISBN": "1234567890",
             "description": "This is a test book.",
             "condition": "Brand New",
+            "available": True,
             "retrieval_location": "Test Location",
             # Owner field will be set to request.user because of the perform_create method that I overrode in BookListCreateView.
         }

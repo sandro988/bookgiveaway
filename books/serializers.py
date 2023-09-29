@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Genre, Book
+from .mixins import ToInternalValueMixin
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -8,7 +9,10 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class BookSerializer(serializers.ModelSerializer):
+class BookSerializer(
+    ToInternalValueMixin,
+    serializers.ModelSerializer,
+):
     """
     This serializer will NOT be used for PUT, PATCH requests
     """
@@ -24,20 +28,11 @@ class BookSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["owner"]
 
-    def to_internal_value(self, data):
-        genre_names = data.get("genre")
-        if genre_names:
-            genres = []
-            for genre_name in genre_names:
-                genre_name = genre_name.capitalize()
-                genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
-                genres.append(genre)
 
-            data["genre"] = genres
-        return super().to_internal_value(data)
-
-
-class BookUpdateSerializer(serializers.ModelSerializer):
+class BookUpdateSerializer(
+    ToInternalValueMixin,
+    serializers.ModelSerializer,
+):
     """
     I could not figure out why but for some reason the PATCH request does not take partial updates when I send request from swagger.
     It was demanding to include fields such as: title, author, ISBN, location and genre in the request even though it should be able
@@ -59,16 +54,3 @@ class BookUpdateSerializer(serializers.ModelSerializer):
             "ISBN": {"required": False},
             "retrieval_location": {"required": False},
         }
-
-    def to_internal_value(self, data):
-        genre_names = data.get("genre")
-        genre_names = list(genre_names)
-        if genre_names:
-            genres = []
-            for genre_name in genre_names:
-                genre_name = genre_name.capitalize()
-                genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
-                genres.append(genre)
-
-            data["genre"] = genres
-        return super().to_internal_value(data)
