@@ -25,6 +25,7 @@ class BookSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         genre_name = data.get("genre")
         if genre_name:
+            genre_name = genre_name.capitalize()
             genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
             data["genre"] = genre
         return super().to_internal_value(data)
@@ -56,6 +57,7 @@ class BookUpdateSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         genre_name = data.get("genre")
         if genre_name:
+            genre_name = genre_name.capitalize()
             genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
             data["genre"] = genre
         return super().to_internal_value(data)
