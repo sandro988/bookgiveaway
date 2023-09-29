@@ -21,15 +21,14 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         UserTestsData.setUpTestData()
 
         cls.token = Token.objects.create(user=cls.user)
-        # cls.history_genre = Genre.objects.create(genre_name="History")
         cls.book_data = {
             "title": "Test Book",
             "author": "Test Author",
-            "genre": "History",
+            "genre": ["History", "Fiction"],
             "ISBN": "1234567890",
             "description": "This is a test book.",
             "condition": "Brand New",
-            "location": "Test Location",
+            "retrieval_location": "Test Location",
             # Owner field will be set to request.user because of the perform_create method that I overrode in BookListCreateView.
         }
 
@@ -45,10 +44,12 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         # Checking that new book was created successfully.
         self.assertEqual(response_for_create.status_code, status.HTTP_201_CREATED)
         book = Book.objects.last()
+        genres = [genre.genre_name for genre in book.genre.all()]
+
         self.assertEqual(Book.objects.count(), 1)
         self.assertEqual(book.title, "Test Book")
         self.assertEqual(book.author, "Test Author")
-        self.assertEqual(book.genre.genre_name, "History")
+        self.assertEqual(genres, ["History", "Fiction"])
         self.assertEqual(book.condition, "Brand New")
         self.assertEqual(book.available, True)
         self.assertEqual(book.owner, self.user)
@@ -113,19 +114,19 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         cls.book = Book.objects.create(
             title="Test Book",
             author="Test Author",
-            genre=cls.fiction_genre,
             ISBN="1234567890",
             description="This is a test book.",
             condition="Brand New",
-            location="Test Location",
+            retrieval_location="Test Location",
             owner=cls.user,
         )
+        cls.book.genre.add(cls.fiction_genre)
         cls.data_for_update = {
             "title": "Updated Title",
             "author": "Updated Author",
-            "genre": "Comics",
+            "genre": ["Comics", "History"],
             "ISBN": "11111111",
-            "location": "Updated Location",
+            "retrieval_location": "Updated Location",
             "description": "Updated description",
         }
 
@@ -140,7 +141,10 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data.get("title"), self.book.title)
-        self.assertEqual(response.data.get("genre"), self.book.genre.genre_name)
+        self.assertEqual(
+            response.data.get("genre"),
+            [genre.genre_name for genre in self.book.genre.all()],
+        )
 
     def test_detail_for_nonexisting_book(self):
         non_existing_pk = "00000000-0000-0000-0000-000000000000"
@@ -177,10 +181,16 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.book.refresh_from_db()
         self.assertEqual(self.book.title, "Updated Title")
         self.assertEqual(self.book.description, "Updated description")
+        self.assertEqual(
+            [genre.genre_name for genre in self.book.genre.all()], ["Comics", "History"]
+        )
 
     def test_update_with_PATCH(self):
         # Sending only partial data
-        self.data_for_update = {"title": "Yet again updated title", "genre": "Comics"}
+        self.data_for_update = {
+            "title": "Yet again updated title",
+            "genre": ["Comics", "History", "Thriller"],
+        }
         response = self.client.patch(
             reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
             self.data_for_update,
@@ -190,7 +200,10 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.book.refresh_from_db()
         self.assertEqual(self.book.title, "Yet again updated title")
-        self.assertEqual(self.book.genre.genre_name, "Comics")
+        self.assertEqual(
+            [genre.genre_name for genre in self.book.genre.all()],
+            ["Comics", "History", "Thriller"],
+        )
 
     def test_update_with_unauthenticated_user(self):
         client = self.client_class()

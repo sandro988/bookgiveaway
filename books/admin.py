@@ -7,9 +7,9 @@ class BookAdmin(admin.ModelAdmin):
         "title",
         "owner",
         "author",
-        "genre",
+        # "genre",
         "condition",
-        "location",
+        "retrieval_location",
         "available",
     ]
 

@@ -27,7 +27,7 @@ class Book(models.Model):
     owner = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     title = models.CharField(max_length=255, unique=True)
     author = models.CharField(max_length=100)
-    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
+    genre = models.ManyToManyField(Genre)
     ISBN = models.CharField(max_length=13, unique=True)
     description = models.TextField(blank=True, default="No description")
     condition = models.CharField(
@@ -35,7 +35,7 @@ class Book(models.Model):
     )
     book_cover = models.ImageField(upload_to=book_cover_filename, blank=True, null=True)
     available = models.BooleanField(default=True)
-    location = models.CharField(max_length=255)
+    retrieval_location = models.CharField(max_length=255)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

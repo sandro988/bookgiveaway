@@ -14,7 +14,9 @@ class BookSerializer(serializers.ModelSerializer):
     """
 
     genre = serializers.SlugRelatedField(
-        slug_field="genre_name", queryset=Genre.objects.all()
+        slug_field="genre_name",
+        queryset=Genre.objects.all(),
+        many=True,
     )
 
     class Meta:
@@ -23,11 +25,15 @@ class BookSerializer(serializers.ModelSerializer):
         read_only_fields = ["owner"]
 
     def to_internal_value(self, data):
-        genre_name = data.get("genre")
-        if genre_name:
-            genre_name = genre_name.capitalize()
-            genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
-            data["genre"] = genre
+        genre_names = data.get("genre")
+        if genre_names:
+            genres = []
+            for genre_name in genre_names:
+                genre_name = genre_name.capitalize()
+                genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
+                genres.append(genre)
+
+            data["genre"] = genres
         return super().to_internal_value(data)
 
 
@@ -40,7 +46,7 @@ class BookUpdateSerializer(serializers.ModelSerializer):
     """
 
     genre = serializers.SlugRelatedField(
-        slug_field="genre_name", queryset=Genre.objects.all(), required=False
+        slug_field="genre_name", queryset=Genre.objects.all(), many=True, required=False
     )
 
     class Meta:
@@ -51,13 +57,18 @@ class BookUpdateSerializer(serializers.ModelSerializer):
             "title": {"required": False},
             "author": {"required": False},
             "ISBN": {"required": False},
-            "location": {"required": False},
+            "retrieval_location": {"required": False},
         }
 
     def to_internal_value(self, data):
-        genre_name = data.get("genre")
-        if genre_name:
-            genre_name = genre_name.capitalize()
-            genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
-            data["genre"] = genre
+        genre_names = data.get("genre")
+        genre_names = list(genre_names)
+        if genre_names:
+            genres = []
+            for genre_name in genre_names:
+                genre_name = genre_name.capitalize()
+                genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
+                genres.append(genre)
+
+            data["genre"] = genres
         return super().to_internal_value(data)
