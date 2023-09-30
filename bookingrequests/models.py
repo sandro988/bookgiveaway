@@ -25,7 +25,6 @@ class BookingRequest(models.Model):
         ("Pending", "Pending"),
         ("Approved", "Approved"),
         ("Rejected", "Rejected"),
-        ("Canceled", "Canceled"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

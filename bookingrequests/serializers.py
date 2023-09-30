@@ -32,3 +32,21 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("You cannot request your own book.")
 
         return data
+
+
+class RetrieveUpdateDeleteBookingRequestSerializer(serializers.ModelSerializer):
+    book_owner_id = serializers.ReadOnlyField(source="book.owner.id")
+    book_owner_email = serializers.ReadOnlyField(source="book.owner.email")
+    book_title = serializers.ReadOnlyField(source="book.title")
+
+    class Meta:
+        model = BookingRequest
+        fields = "__all__"
+        read_only_fields = [
+            "requester",
+            "status",
+            "request_selected",
+        ]
+        extra_kwargs = {
+            "request_selected": {"default": False},
+        }
