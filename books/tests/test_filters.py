@@ -48,16 +48,18 @@ class BookFilterTestClass(TestCase, UserTestsData):
         cls.book2.genre.add(cls.genre2)
         cls.book3.genre.add(cls.genre2)
 
+        cls.book_list_url = reverse("books-list")
+
     def test_filter_by_author(self):
         response = self.client.get(
-            reverse("book_list_create_api_view"), {"author": "Author 1"}, format="json"
+            self.book_list_url, {"author": "Author 1"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "Book 1")
 
         response = self.client.get(
-            reverse("book_list_create_api_view"), {"author": "Author 2"}, format="json"
+            self.book_list_url, {"author": "Author 2"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
@@ -66,9 +68,7 @@ class BookFilterTestClass(TestCase, UserTestsData):
         self.assertEqual(response.data[1]["title"], "Book 3")
 
     def test_filter_by_condition(self):
-        response = self.client.get(
-            reverse("book_list_create_api_view"), {"condition": "Brand New"}
-        )
+        response = self.client.get(self.book_list_url, {"condition": "Brand New"})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
@@ -77,9 +77,7 @@ class BookFilterTestClass(TestCase, UserTestsData):
         self.assertEqual(titles, ["Book 1", "Book 3"])
 
     def test_filter_by_available(self):
-        response = self.client.get(
-            reverse("book_list_create_api_view"), {"available": "true"}
-        )
+        response = self.client.get(self.book_list_url, {"available": "true"})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
@@ -88,9 +86,7 @@ class BookFilterTestClass(TestCase, UserTestsData):
         self.assertEqual(titles, ["Book 1", "Book 3"])
 
     def test_filter_by_genre(self):
-        response = self.client.get(
-            reverse("book_list_create_api_view"), {"genre__genre_name": "Fiction"}
-        )
+        response = self.client.get(self.book_list_url, {"genre__genre_name": "Fiction"})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)

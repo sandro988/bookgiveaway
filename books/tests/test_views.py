@@ -33,13 +33,15 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
             # Owner field will be set to request.user because of the perform_create method that I overrode in BookListCreateView.
         }
 
+        cls.book_list_url = reverse("books-list")
+
     def setUp(self):
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
     def test_create_and_list_functionality(self):
         response_for_create = self.client.post(
-            reverse("book_list_create_api_view"), self.book_data, format="json"
+            self.book_list_url, self.book_data, format="json"
         )
 
         # Checking that new book was created successfully.
@@ -56,19 +58,19 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         self.assertEqual(book.owner, self.user)
 
         # Checking that book is listed out when users access api/books/ endpoint with GET request.
-        response_for_list = self.client.get(reverse("book_list_create_api_view"))
+        response_for_list = self.client.get(self.book_list_url)
         self.assertEqual(response_for_list.status_code, status.HTTP_200_OK)
 
     def test_create_with_duplicate_data(self):
         # Creating new book
         first_create_response = self.client.post(
-            reverse("book_list_create_api_view"), self.book_data, format="json"
+            self.book_list_url, self.book_data, format="json"
         )
         self.assertEqual(first_create_response.status_code, status.HTTP_201_CREATED)
 
         # Trying to create the exact same book I created previouisly.
         second_create_response = self.client.post(
-            reverse("book_list_create_api_view"), self.book_data, format="json"
+            self.book_list_url, self.book_data, format="json"
         )
         self.assertEqual(
             second_create_response.status_code, status.HTTP_400_BAD_REQUEST
@@ -76,17 +78,13 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
 
     def test_create_with_empty_fields(self):
         self.book_data["title"] = ""
-        response = self.client.post(
-            reverse("book_list_create_api_view"), self.book_data, format="json"
-        )
+        response = self.client.post(self.book_list_url, self.book_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_with_unauthenticated_user(self):
         # I am creating a new instance of the self.client without authentication credentials.
         client = self.client_class()
-        response = client.post(
-            reverse("book_list_create_api_view"), self.book_data, format="json"
-        )
+        response = client.post(self.book_list_url, self.book_data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(Book.objects.count(), 0)
@@ -94,13 +92,13 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
     def test_book_listing_with_unauthenticated_user(self):
         # First I create a book
         create_book_response = self.client.post(
-            reverse("book_list_create_api_view"), self.book_data, format="json"
+            self.book_list_url, self.book_data, format="json"
         )
 
         # Just like in the previoius test I am creating a new instance of the
         # self.client without authentication credentials.
         client = self.client_class()
-        list_book_response = client.get(reverse("book_list_create_api_view"))
+        list_book_response = client.get(self.book_list_url)
 
         self.assertEqual(list_book_response.status_code, status.HTTP_200_OK)
 
@@ -131,14 +129,14 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
             "description": "Updated description",
         }
 
+        cls.book_detail_url = reverse("books-detail", kwargs={"pk": cls.book.pk})
+
     def setUp(self):
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
     def test_book_detail(self):
-        response = self.client.get(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}), format="json"
-        )
+        response = self.client.get(self.book_detail_url, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data.get("title"), self.book.title)
@@ -150,7 +148,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
     def test_detail_for_nonexisting_book(self):
         non_existing_pk = "00000000-0000-0000-0000-000000000000"
         response = self.client.get(
-            reverse("book_detail_api_view", kwargs={"pk": non_existing_pk}),
+            reverse("books-detail", kwargs={"pk": non_existing_pk}),
             format="json",
         )
 
@@ -165,15 +163,13 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         """
 
         client = self.client_class()
-        response = client.get(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}), format="json"
-        )
+        response = client.get(self.book_detail_url, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_update_with_PUT(self):
         response = self.client.put(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -193,7 +189,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
             "genre": ["Comics", "History", "Thriller"],
         }
         response = self.client.patch(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -210,7 +206,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         client = self.client_class()
         # Testing for PUT request
         response_for_PUT = client.put(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -220,7 +216,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         # Testing for PATCH request
         self.data_for_update = {"title": "Yet again updated title"}
         response_for_PATCH = client.patch(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -237,7 +233,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
 
         # Testing for PUT request
         response_for_PUT = self.client.put(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -248,7 +244,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         # Testing for PATCH request
         self.data_for_update = {"title": "Yet again updated title"}
         response_for_PATCH = self.client.patch(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -259,7 +255,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         # Testing for PUT request
         self.data_for_update["title"] = ""
         response_for_PUT = self.client.put(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -270,7 +266,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         # Testing for PATCH request
         self.data_for_update = {"title": ""}
         response_for_PUT = self.client.patch(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             self.data_for_update,
             format="json",
         )
@@ -281,7 +277,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
     def test_update_with_nonexisting_book(self):
         non_existing_pk = "00000000-0000-0000-0000-000000000000"
         response_for_PUT = self.client.put(
-            reverse("book_detail_api_view", kwargs={"pk": non_existing_pk}),
+            reverse("books-detail", kwargs={"pk": non_existing_pk}),
             self.data_for_update,
             format="json",
         )
@@ -290,16 +286,14 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
 
         self.data_for_update = {"title": "Yet again updated title"}
         response_for_PATCH = self.client.patch(
-            reverse("book_detail_api_view", kwargs={"pk": non_existing_pk}),
+            reverse("books-detail", kwargs={"pk": non_existing_pk}),
             self.data_for_update,
             format="json",
         )
         self.assertEqual(response_for_PATCH.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_book(self):
-        response = self.client.delete(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}), format="json"
-        )
+        response = self.client.delete(self.book_detail_url, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Book.objects.count(), 0)
@@ -307,7 +301,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
     def test_delete_nonexisting_book(self):
         non_existing_pk = "00000000-0000-0000-0000-000000000000"
         response = self.client.delete(
-            reverse("book_detail_api_view", kwargs={"pk": non_existing_pk}),
+            reverse("books-detail", kwargs={"pk": non_existing_pk}),
             format="json",
         )
 
@@ -317,7 +311,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         # new instance of the self.client without credentials.
         client = self.client_class()
         response = client.delete(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -332,7 +326,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {non_author_user_token.key}")
 
         response = self.client.delete(
-            reverse("book_detail_api_view", kwargs={"pk": self.book.pk}),
+            self.book_detail_url,
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import Genre, Book
-from .mixins import ToInternalValueMixin
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -9,14 +8,7 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class BookSerializer(
-    ToInternalValueMixin,
-    serializers.ModelSerializer,
-):
-    """
-    This serializer will NOT be used for PUT, PATCH requests
-    """
-
+class BookSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         slug_field="genre_name",
         queryset=Genre.objects.all(),
@@ -28,29 +20,30 @@ class BookSerializer(
         fields = "__all__"
         read_only_fields = ["owner"]
 
+    def to_internal_value(self, data):
+        """
+        This method is used to get the genres, capitalize them so that
+        no duplicate genres are created and create them if they do not already
+        exist in the Genre model.
 
-class BookUpdateSerializer(
-    ToInternalValueMixin,
-    serializers.ModelSerializer,
-):
-    """
-    I could not figure out why but for some reason the PATCH request does not take partial updates when I send request from swagger.
-    It was demanding to include fields such as: title, author, ISBN, location and genre in the request even though it should be able
-    to take partial updates, so I created this separate serializer and in BookDetailView's 'get_serializer_class'
-    method I am passing this serializer if the request.method is PATCH, otherwise I am passing BookSerializer.
-    """
+        For example if user inputs genre in all uppercase it will be capitalized
+        and checked if already exists in the Genre model. Thus no duplicate of Genre
+        will be created.
 
-    genre = serializers.SlugRelatedField(
-        slug_field="genre_name", queryset=Genre.objects.all(), many=True, required=False
-    )
+        Parameters:
+            data (dict): The input data to be transformed.
 
-    class Meta:
-        model = Book
-        fields = "__all__"
-        read_only_fields = ["owner"]
-        extra_kwargs = {
-            "title": {"required": False},
-            "author": {"required": False},
-            "ISBN": {"required": False},
-            "retrieval_location": {"required": False},
-        }
+        Returns:
+            dict: The transformed data with 'genre' field converted to a list of Genre objects.
+        """
+
+        genre_names = data.get("genre")
+        if genre_names:
+            genres = []
+            for genre_name in genre_names:
+                genre_name = genre_name.capitalize()
+                genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
+                genres.append(genre)
+
+            data["genre"] = genres
+        return super().to_internal_value(data)
