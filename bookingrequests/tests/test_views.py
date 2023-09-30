@@ -8,7 +8,7 @@ from bookingrequests.models import BookingRequest
 from books.models import Book, Genre, Author
 
 
-class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
+class ListCreateBookingRequestsTestClass(APITestCase, UserTestsData):
     @classmethod
     def setUpTestData(cls):
         UserTestsData.setUpTestData()
@@ -42,7 +42,7 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
             "additional_information": "I would like to request your book.",
         }
 
-        cls.booking_request_create_url = reverse("booking-requests-create")
+        cls.booking_request_list_create_url = reverse("booking-requests-list-create")
 
     def setUp(self):
         self.client = APIClient()
@@ -50,7 +50,7 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
 
     def test_create_booking_request(self):
         response = self.client.post(
-            self.booking_request_create_url,
+            self.booking_request_list_create_url,
             self.booking_request_data,
             format="json",
         )
@@ -69,7 +69,7 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
     def test_create_duplicate_booking_request(self):
         # Initial request.
         response = self.client.post(
-            self.booking_request_create_url,
+            self.booking_request_list_create_url,
             self.booking_request_data,
             format="json",
         )
@@ -79,7 +79,7 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
 
         # Second request trying to create the same request.
         response = self.client.post(
-            self.booking_request_create_url,
+            self.booking_request_list_create_url,
             self.booking_request_data,
             format="json",
         )
@@ -91,7 +91,9 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
         # I am creating a new instance of the self.client without authentication credentials.
         client = self.client_class()
         response = client.post(
-            self.booking_request_create_url, self.booking_request_data, format="json"
+            self.booking_request_list_create_url,
+            self.booking_request_data,
+            format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -101,7 +103,7 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
         self.booking_request_data["book"] = ""
         self.booking_request_data["book_description"] = ""
         response = self.client.post(
-            self.booking_request_create_url,
+            self.booking_request_list_create_url,
             self.booking_request_data,
             format="json",
         )
@@ -117,7 +119,7 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
 
         # Trying to request booking for the book by the owner of the book.
         response = self.client.post(
-            self.booking_request_create_url,
+            self.booking_request_list_create_url,
             self.booking_request_data,
             format="json",
         )
@@ -125,6 +127,36 @@ class CreateBookingRequestsTestClass(APITestCase, UserTestsData):
         # Owner of the book should not be able to create booking of his own book.
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(BookingRequest.objects.count(), 0)
+
+    def test_booking_request_listing(self):
+        # Testing for the user that does not have booking request.
+        response_for_list = self.client.get(self.booking_request_list_create_url)
+        self.assertEqual(response_for_list.status_code, status.HTTP_204_NO_CONTENT)
+
+        # creating a booking request with requester_user
+        response_for_create = self.client.post(
+            self.booking_request_list_create_url,
+            self.booking_request_data,
+            format="json",
+        )
+        self.assertEqual(response_for_create.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(BookingRequest.objects.count(), 1)
+
+        # Authorizing as the book owner user, which in my case is just 'user'
+        token = Token.objects.create(user=self.user)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+        # Sending GET request to get the list of booking requests created by this user.
+        response_for_list = self.client.get(self.booking_request_list_create_url)
+
+        self.assertEqual(response_for_list.status_code, status.HTTP_200_OK)
+
+    def test_booking_request_listing_for_unauthenticated_user(self):
+        client = self.client_class()
+        response_for_list = client.get(self.booking_request_list_create_url)
+
+        self.assertEqual(response_for_list.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class BookingRequestsDetailTestClass(APITestCase, UserTestsData):
