@@ -4,24 +4,52 @@ from django.db import models
 
 
 class Genre(models.Model):
+    """
+    model for book genres.
+
+    Attributes:
+        genre_name (str): The name of the genre (for example: "Thriller").
+    """
+
     genre_name = models.CharField(max_length=100, unique=True)
-    genre_description = models.TextField(blank=True)
 
     def __str__(self):
         return self.genre_name
 
 
 class Author(models.Model):
+    """
+    Model for book authors.
+
+    model fields:
+        author_name (str): The name of the author (for example: "Stephen King").
+    """
+
     author_name = models.CharField(max_length=100, unique=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-    country = models.CharField(max_length=100, blank=True)
-    author_info = models.TextField(blank=True)
 
     def __str__(self):
         return self.author_name
 
 
 class Book(models.Model):
+    """
+    Model for a book with various details.
+
+    Model fields:
+        owner (ForeignKey): The owner of the book.
+        author (ManyToManyField): The authors of the book.
+        genre (ManyToManyField): The genres associated with the book.
+        title (str): The title of the book.
+        ISBN (str): The ISBN (International Standard Book Number) of the book.
+        description (str): A brief description of the book.
+        condition (str): The condition of the book (either "Brand New" or "Used").
+        book_cover (ImageField): An image representing the book cover.
+        available (bool): Indicates whether the book is available or not(either True or False).
+        retrieval_location (str): The location from where the book can be retrieved.
+        created (DateTimeField): The date and time when the book record was created.
+        updated (DateTimeField): The date and time when the book record was last updated.
+    """
+
     def book_cover_filename(self, filename):
         """
         Used for assigning names to book covers so that they are more manageable and unique.

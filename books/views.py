@@ -1,8 +1,10 @@
-from .serializers import BookSerializer
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
+from .serializers import BookSerializer, GenreSerializer, AuthorSerializer
 from .permissions import IsAuthorOrReadOnly
 from .filters import BookFilter
-from .models import Book
-from rest_framework.viewsets import ModelViewSet
+from .models import Book, Genre, Author
 
 
 class BookViewSet(ModelViewSet):
@@ -48,3 +50,59 @@ class BookViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+
+class GenreListAPIView(ListAPIView):
+    """
+    **Genre List API Endpoint**
+
+    This view provides users with a list of available genres. With this view users can retrieve all the
+    genres present in the database.
+
+    **Authentication:**
+    - No authentication is required to access this view.
+
+    **Supported Operations:**
+
+    - `list`: Gets a list of all available genres.
+
+    **Genre Field (JSON Response):**
+
+    - The genres are represented as a list of dictionaries, each containing the `id` and `genre_name` fields.
+
+    **Genre field example (JSON):**
+
+    `[{"id": 1, "genre_name": "Horror"}, {"id": 2, "genre_name": "Thriller"}, ...]`
+    """
+
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = [AllowAny]
+
+
+class AuthorListAPIView(ListAPIView):
+    """
+    **Author List API Endpoint**
+
+    This view provides users with a list of available authors. With this view users can retrieve all the
+    authors present in the database.
+
+    **Authentication:**
+    - No authentication is required to access this view.
+
+    **Supported Operations:**
+
+    - `list`: Gets a list of all available authors.
+
+    **Author Field (JSON Response):**
+
+    The authors are represented as a list of dictionaries, each containing the `id` and `author_name` fields.
+
+    **Author field example (JSON):**
+
+    `[{"id": 1, "author_name": "F. Scott Fitzgerald"}, {"id": 2, "author_name": "Stephen King"}, ...]`
+    """
+
+    queryset = Author.objects.all()
+    serializer_class = AuthorSerializer
+    permission_classes = [AllowAny]

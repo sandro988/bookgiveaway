@@ -343,3 +343,61 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Book.objects.count(), 1)
+
+
+class GenreListViewTests(APITestCase, UserTestsData):
+    @classmethod
+    def setUpTestData(cls):
+        UserTestsData.setUpTestData()
+        cls.token = Token.objects.create(user=cls.user)
+
+        # Creating genres
+        for num in range(1, 11):
+            Genre.objects.create(genre_name=f"Genre {num}")
+        cls.genre_list_url = reverse("genres-list")
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+
+    def test_genre_listing(self):
+        response = self.client.get(self.genre_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 10)
+
+    def test_genre_list_with_unauthenticated_user(self):
+        client = self.client_class()
+        response = client.get(self.genre_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 10)
+
+
+class AuthorListViewTests(APITestCase, UserTestsData):
+    @classmethod
+    def setUpTestData(cls):
+        UserTestsData.setUpTestData()
+        cls.token = Token.objects.create(user=cls.user)
+
+        # Creating Authors
+        for num in range(1, 11):
+            Author.objects.create(author_name=f"author {num}")
+        cls.author_list_url = reverse("authors-list")
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+
+    def test_author_listing(self):
+        response = self.client.get(self.author_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 10)
+
+    def test_author_list_with_unauthenticated_user(self):
+        client = self.client_class()
+        response = client.get(self.author_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 10)

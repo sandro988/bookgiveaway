@@ -9,6 +9,12 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = "__all__"
+
+
 class BookSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         slug_field="genre_name",
