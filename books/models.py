@@ -11,6 +11,16 @@ class Genre(models.Model):
         return self.genre_name
 
 
+class Author(models.Model):
+    author_name = models.CharField(max_length=100, unique=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True)
+    author_info = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.author_name
+
+
 class Book(models.Model):
     def book_cover_filename(self, filename):
         """
@@ -25,9 +35,9 @@ class Book(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
-    title = models.CharField(max_length=255, unique=True)
-    author = models.CharField(max_length=100)
+    author = models.ManyToManyField(Author)
     genre = models.ManyToManyField(Genre)
+    title = models.CharField(max_length=255, unique=True)
     ISBN = models.CharField(max_length=13, unique=True)
     description = models.TextField(blank=True, default="No description")
     condition = models.CharField(

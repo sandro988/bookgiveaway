@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Genre, Book
+from .models import Genre, Book, Author
+from .utils import transform_genres_and_authors
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -14,6 +15,11 @@ class BookSerializer(serializers.ModelSerializer):
         queryset=Genre.objects.all(),
         many=True,
     )
+    author = serializers.SlugRelatedField(
+        slug_field="author_name",
+        queryset=Author.objects.all(),
+        many=True,
+    )
 
     class Meta:
         model = Book
@@ -21,29 +27,6 @@ class BookSerializer(serializers.ModelSerializer):
         read_only_fields = ["owner"]
 
     def to_internal_value(self, data):
-        """
-        This method is used to get the genres, capitalize them so that
-        no duplicate genres are created and create them if they do not already
-        exist in the Genre model.
-
-        For example if user inputs genre in all uppercase it will be capitalized
-        and checked if already exists in the Genre model. Thus no duplicate of Genre
-        will be created.
-
-        Parameters:
-            data (dict): The input data to be transformed.
-
-        Returns:
-            dict: The transformed data with 'genre' field converted to a list of Genre objects.
-        """
-
-        genre_names = data.get("genre")
-        if genre_names:
-            genres = []
-            for genre_name in genre_names:
-                genre_name = genre_name.capitalize()
-                genre, _ = Genre.objects.get_or_create(genre_name=genre_name)
-                genres.append(genre)
-
-            data["genre"] = genres
+        data = transform_genres_and_authors(data, "genre", Genre)
+        data = transform_genres_and_authors(data, "author", Author)
         return super().to_internal_value(data)

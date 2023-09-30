@@ -27,18 +27,18 @@ class BookViewSet(ModelViewSet):
 
     **Filtering Options:**
 
-    - `author`: Filter books by author.
+    - `author__author_name`: Filter books by author.
     - `genre__genre_name`: Filter books by genre.
     - `condition`: Filter books by condition (options: **'Brand New'** or **'Used'**).
     - `available`: Filter books by availability status (options: **'true'** or **'false'**).
 
-    **Genre Field (ManyToMany):**
+    **Genre Field, Author Field (ManyToMany):**
 
-    The `genre` field in the JSON response is represented as a list of genre names as strings.
+    The `genre` and `author` fields in the JSON response are represented as a list of genre/author names as strings.
 
-    **Example Genre Field (JSON):**
+    **Genre and Author fields example (JSON):**
 
-    `{"genre": ["Classic", "Fiction"], ...}`
+    `{"genre": ["Classic", "Fiction"], "author": ["F. Scott Fitzgerald", "Stephen King"], ...}`
     """
 
     serializer_class = BookSerializer

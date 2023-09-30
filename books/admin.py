@@ -6,11 +6,9 @@ class BookAdmin(admin.ModelAdmin):
     list_display = [
         "title",
         "owner",
-        "author",
-        # "genre",
         "condition",
-        "retrieval_location",
         "available",
+        "retrieval_location",
     ]
 
 

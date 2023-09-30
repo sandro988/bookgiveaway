@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 from rest_framework.authtoken.models import Token
-from books.models import Book, Genre
+from books.models import Book, Genre, Author
 
 
 class UserTestsData:
@@ -23,7 +23,7 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         cls.token = Token.objects.create(user=cls.user)
         cls.book_data = {
             "title": "Test Book",
-            "author": "Test Author",
+            "author": ["Charles Dickens", "Stephen King"],
             "genre": ["History", "Fiction"],
             "ISBN": "1234567890",
             "description": "This is a test book.",
@@ -48,10 +48,11 @@ class BookListCreateViewTests(APITestCase, UserTestsData):
         self.assertEqual(response_for_create.status_code, status.HTTP_201_CREATED)
         book = Book.objects.last()
         genres = [genre.genre_name for genre in book.genre.all()]
+        authors = [author.author_name for author in book.author.all()]
 
         self.assertEqual(Book.objects.count(), 1)
         self.assertEqual(book.title, "Test Book")
-        self.assertEqual(book.author, "Test Author")
+        self.assertEqual(authors, ["Charles Dickens", "Stephen King"])
         self.assertEqual(genres, ["History", "Fiction"])
         self.assertEqual(book.condition, "Brand New")
         self.assertEqual(book.available, True)
@@ -109,20 +110,25 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         UserTestsData.setUpTestData()
         cls.token = Token.objects.create(user=cls.user)
 
+        # Creating genre, author and book
         cls.fiction_genre = Genre.objects.create(genre_name="Fiction")
+        cls.fiction_author = Author.objects.create(author_name="Stephen King")
         cls.book = Book.objects.create(
             title="Test Book",
-            author="Test Author",
             ISBN="1234567890",
             description="This is a test book.",
             condition="Brand New",
             retrieval_location="Test Location",
             owner=cls.user,
         )
+
+        # Setting genre and author to book
         cls.book.genre.add(cls.fiction_genre)
+        cls.book.author.add(cls.fiction_author)
+
         cls.data_for_update = {
             "title": "Updated Title",
-            "author": "Updated Author",
+            "author": ["Stan Lee", "Charles Dickens"],
             "genre": ["Comics", "History"],
             "ISBN": "11111111",
             "retrieval_location": "Updated Location",
@@ -157,9 +163,9 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
     def test_detail_with_unauthenticated_user(self):
         """
         In books/permissions.py I created IsAuthorOrReadOnly permission
-        class where I am allowing unauthenticated users to have a read-only
-        access and this test will be test that they do not get 404 when
-        simply accessing individual books to just view them
+        class where I am allowing unauthenticated users to have a read-only.
+        this test will test that users do not get 404 when simply accessing
+        individual books to just view them.
         """
 
         client = self.client_class()
@@ -187,6 +193,7 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.data_for_update = {
             "title": "Yet again updated title",
             "genre": ["Comics", "History", "Thriller"],
+            "author": ["Stan Lee", "Charles Dickens", "Stephen King"],
         }
         response = self.client.patch(
             self.book_detail_url,
@@ -200,6 +207,11 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
         self.assertEqual(
             [genre.genre_name for genre in self.book.genre.all()],
             ["Comics", "History", "Thriller"],
+        )
+        # Using sorted function because the ordering of both of these lists was different.
+        self.assertEqual(
+            sorted([author.author_name for author in self.book.author.all()]),
+            sorted(["Stan Lee", "Charles Dickens", "Stephen King"]),
         )
 
     def test_update_with_unauthenticated_user(self):

@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from books.models import Book, Genre
+from books.models import Book, Genre, Author
 from .test_views import UserTestsData
 
 
@@ -14,10 +14,13 @@ class BookFilterTestClass(TestCase, UserTestsData):
         cls.genre1 = Genre.objects.create(genre_name="History")
         cls.genre2 = Genre.objects.create(genre_name="Fiction")
 
+        # Creating authors
+        cls.author1 = Author.objects.create(author_name="Charles Dickens")
+        cls.author2 = Author.objects.create(author_name="Stephen King")
+
         # Creating books
         cls.book1 = Book.objects.create(
             title="Book 1",
-            author="Author 1",
             condition="Brand New",
             available=True,
             ISBN="1",
@@ -26,7 +29,6 @@ class BookFilterTestClass(TestCase, UserTestsData):
         )
         cls.book2 = Book.objects.create(
             title="Book 2",
-            author="Author 2",
             condition="Used",
             available=False,
             ISBN="2",
@@ -35,7 +37,6 @@ class BookFilterTestClass(TestCase, UserTestsData):
         )
         cls.book3 = Book.objects.create(
             title="Book 3",
-            author="Author 2",
             condition="Brand New",
             available=True,
             ISBN="3",
@@ -48,18 +49,25 @@ class BookFilterTestClass(TestCase, UserTestsData):
         cls.book2.genre.add(cls.genre2)
         cls.book3.genre.add(cls.genre2)
 
+        # Assigning authors to books
+        cls.book1.author.add(cls.author1)
+        cls.book2.author.add(cls.author2)
+        cls.book3.author.add(cls.author2)
+
         cls.book_list_url = reverse("books-list")
 
     def test_filter_by_author(self):
         response = self.client.get(
-            self.book_list_url, {"author": "Author 1"}, format="json"
+            self.book_list_url,
+            {"author__author_name": "Charles Dickens"},
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "Book 1")
 
         response = self.client.get(
-            self.book_list_url, {"author": "Author 2"}, format="json"
+            self.book_list_url, {"author__author_name": "Stephen King"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
