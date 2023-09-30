@@ -27,10 +27,12 @@ class BookSerializer(serializers.ModelSerializer):
         many=True,
     )
 
+    owner_email = serializers.EmailField(source="owner.email", read_only=True)
+
     class Meta:
         model = Book
         fields = "__all__"
-        read_only_fields = ["owner"]
+        read_only_fields = ["owner", "owner_email"]
 
     def to_internal_value(self, data):
         data = transform_genres_and_authors(data, "genre", Genre)

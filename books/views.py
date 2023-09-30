@@ -2,7 +2,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from .serializers import BookSerializer, GenreSerializer, AuthorSerializer
-from .permissions import IsAuthorOrReadOnly
+from .permissions import IsOwnerOrReadOnly
 from .filters import BookFilter
 from .models import Book, Genre, Author
 
@@ -46,7 +46,7 @@ class BookViewSet(ModelViewSet):
     serializer_class = BookSerializer
     queryset = Book.objects.all()
     filterset_class = BookFilter
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsOwnerOrReadOnly,)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

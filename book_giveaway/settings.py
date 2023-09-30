@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     # Local apps
     "accounts.apps.AccountsConfig",
     "books.apps.BooksConfig",
+    "bookingrequests.apps.BookingrequestsConfig",
     # Django cleanup
     "django_cleanup.apps.CleanupConfig",
 ]
