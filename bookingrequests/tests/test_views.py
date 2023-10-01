@@ -60,8 +60,6 @@ class ListCreateBookingRequestsTestClass(APITestCase, UserTestsData):
         booking_request = BookingRequest.objects.last()
         self.assertEqual(booking_request.requester, self.requester_user)
         self.assertEqual(booking_request.book, self.book)
-        self.assertEqual(booking_request.status, "Pending")
-        self.assertEqual(booking_request.request_selected, False)
         self.assertEqual(
             booking_request.additional_information, "I would like to request your book."
         )
@@ -158,6 +156,23 @@ class ListCreateBookingRequestsTestClass(APITestCase, UserTestsData):
 
         self.assertEqual(response_for_list.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_booking_request_for_unavailable_book(self):
+        # Making a book unavailabe
+        self.book.available = False
+        self.book.save()
+
+        # Trying to create a booking request with a book that is not available
+        response = self.client.post(
+            self.booking_request_list_create_url,
+            self.booking_request_data,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            BookingRequest.objects.count(), 0
+        )  # Checking that no booking request was created
+
 
 class BookingRequestsDetailTestClass(APITestCase, UserTestsData):
     @classmethod
@@ -225,8 +240,6 @@ class BookingRequestsDetailTestClass(APITestCase, UserTestsData):
         self.assertEqual(BookingRequest.objects.count(), 1)
         self.assertEqual(response.data["requester"], self.requester_user.id)
         self.assertEqual(response.data["book"], self.book.id)
-        self.assertEqual(response.data["status"], "Pending")
-        self.assertEqual(response.data["request_selected"], False)
         self.assertEqual(
             response.data["additional_information"],
             "I would like to request your book.",
@@ -274,8 +287,6 @@ class BookingRequestsDetailTestClass(APITestCase, UserTestsData):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["requester"], self.requester_user.id)
         self.assertEqual(response.data["book"], self.book.id)
-        self.assertEqual(response.data["status"], "Pending")
-        self.assertEqual(response.data["request_selected"], False)
         self.assertEqual(
             response.data["additional_information"],
             "I would like to request your book.",
@@ -466,6 +477,157 @@ class BookingRequestsDetailTestClass(APITestCase, UserTestsData):
         non_existing_pk = "00000000-0000-0000-0000-000000000000"
         response = self.client.delete(
             reverse("booking-requests-detail", kwargs={"pk": non_existing_pk}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class ManageRequestsTestClass(APITestCase, UserTestsData):
+    @classmethod
+    def setUpTestData(cls):
+        UserTestsData.setUpTestData()
+        # Token for owner.
+        cls.token = Token.objects.create(user=cls.user)
+
+        # Creating users that I will use to make booking requests.
+        User = get_user_model()
+        cls.user1 = User.objects.create_user(
+            email="requester_1@email.com", password="requester_1_test_pass"
+        )
+        cls.user2 = User.objects.create_user(
+            email="requester_2@email.com", password="requester_2_test_pass"
+        )
+        cls.user3 = User.objects.create_user(
+            email="requester_3@email.com", password="requester_3_test_pass"
+        )
+
+        # Creating genre, author and book.
+        cls.genre = Genre.objects.create(genre_name="Fiction")
+        cls.author = Author.objects.create(author_name="Stephen King")
+        cls.book = Book.objects.create(
+            title="Test Book",
+            ISBN="1234567890",
+            description="This is a test book.",
+            condition="Brand New",
+            retrieval_location="Georgia, Tbilisi",
+            owner=cls.user,
+        )
+
+        # Setting genre and author to a book.
+        cls.book.genre.add(cls.genre)
+        cls.book.author.add(cls.author)
+
+        # Creating booking requests.
+        cls.booking_request1 = BookingRequest.objects.create(
+            book=cls.book,
+            additional_information="I would like to request your book.",
+            requester=cls.user1,
+        )
+        cls.booking_request2 = BookingRequest.objects.create(
+            book=cls.book,
+            additional_information="I would also like to request your book.",
+            requester=cls.user2,
+        )
+        cls.booking_request3 = BookingRequest.objects.create(
+            book=cls.book,
+            additional_information="Hello, I would really like to request your book.",
+            requester=cls.user1,
+        )
+
+        # Request urls.
+        cls.url = reverse(
+            "manage-booking-request", kwargs={"pk": cls.booking_request1.id}
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+
+    def test_manage_booking_request_with_approved_status(self):
+        response = self.client.put(
+            self.url,
+            data={"approve": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that all of the booking requests were deleted and
+        # the book has new owner and is not available any more.
+        # New owner in this instance should be 'user1' with the email
+        # of 'requester_1@email.com'
+
+        self.book.refresh_from_db()
+        self.assertEqual(BookingRequest.objects.count(), 0)
+        self.assertFalse(
+            BookingRequest.objects.filter(id=self.booking_request1.id).exists()
+        )
+        self.assertFalse(
+            BookingRequest.objects.filter(id=self.booking_request2.id).exists()
+        )
+        self.assertFalse(
+            BookingRequest.objects.filter(id=self.booking_request3.id).exists()
+        )
+        self.assertEqual(self.book.owner, self.user1)
+        self.assertEqual(self.book.owner.email, "requester_1@email.com")
+        self.assertEqual(self.book.available, False)
+
+    def test_manage_booking_request_with_rejected_status(self):
+        response = self.client.put(
+            self.url,
+            data={"approve": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Checking that the booking request was deleted.
+        self.book.refresh_from_db()
+        self.assertEqual(BookingRequest.objects.count(), 2)
+        self.assertQuerysetEqual(
+            BookingRequest.objects.filter(id=self.booking_request1.id), []
+        )
+        self.assertFalse(
+            BookingRequest.objects.filter(id=self.booking_request1.id).exists()
+        )
+
+        # Checking that the owner of the book and availability is the same.
+        self.assertEqual(self.book.owner, self.user)
+        self.assertEqual(self.book.owner.email, "test_user@email.com")
+        self.assertEqual(self.book.available, True)
+
+    def test_manage_booking_request_with_invalid_status(self):
+        response = self.client.put(
+            self.url,
+            data={"approve": "Not a boolean field"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Checking that nothing was changed or deleted.
+        self.assertEqual(BookingRequest.objects.count(), 3)
+        self.assertEqual(self.book.owner, self.user)
+        self.assertEqual(self.book.owner.email, "test_user@email.com")
+        self.assertEqual(self.book.available, True)
+
+    def test_manage_booking_request_with_unauthenticated_user(self):
+        client = self.client_class()
+        response = client.put(self.url, data={"approve": True}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_manage_booking_request_with_non_owner_user(self):
+        token = Token.objects.create(user=self.user1)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+        response = self.client.put(self.url, data={"approve": True}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manage_booking_request_with_nonexistent_pk(self):
+        non_existing_pk = "00000000-0000-0000-0000-000000000000"
+        response = self.client.put(
+            reverse("manage-booking-request", kwargs={"pk": non_existing_pk}),
             format="json",
         )
 

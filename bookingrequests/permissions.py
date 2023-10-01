@@ -22,3 +22,13 @@ class IsRequesterOrOwnerRetrieveOnly(permissions.BasePermission):
             return True
 
         return obj.requester == user
+
+
+class IsBookOwner(permissions.BasePermission):
+    """
+    Custom permission to check if the user making a request is the owner of the book associated with the booking request.
+    This permission class ensures that only owner of a book can manage booking requests.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        return obj.book.owner == request.user

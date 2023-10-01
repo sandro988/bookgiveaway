@@ -3,8 +3,7 @@ from .models import BookingRequest
 
 
 class BookingRequestAdmin(admin.ModelAdmin):
-    list_display = ("book", "requester", "status", "created_at")
-    list_filter = ("status", "created_at")
+    list_display = ("book", "requester", "id", "created_at")
     search_fields = ("book__title", "requester__email")
 
 

@@ -1,12 +1,18 @@
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView
+from rest_framework.generics import (
+    RetrieveUpdateDestroyAPIView,
+    ListCreateAPIView,
+    UpdateAPIView,
+)
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import (
     BookingRequestSerializer,
     RetrieveUpdateDeleteBookingRequestSerializer,
+    ManageBookingRequestSerializer,
 )
-from .permissions import IsRequesterOrOwnerRetrieveOnly
+from .permissions import IsRequesterOrOwnerRetrieveOnly, IsBookOwner
 from .models import BookingRequest
+from .utils import process_booking_request
 
 
 class BookingRequestListCreateView(ListCreateAPIView):
@@ -57,7 +63,10 @@ class BookingRequestListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return BookingRequest.objects.filter(book__owner=user)
+        if user.is_authenticated:
+            return BookingRequest.objects.filter(book__owner=user)
+
+        return BookingRequest.objects.none()
 
     def list(self, request, *args, **kwargs):
         """
@@ -132,3 +141,53 @@ class BookingRequestDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = RetrieveUpdateDeleteBookingRequestSerializer
     permission_classes = (IsRequesterOrOwnerRetrieveOnly,)
     queryset = BookingRequest.objects.all()
+
+
+class ManageBookingRequestView(UpdateAPIView):
+    """
+    **API Endpoint for Managing Booking Requests.**
+
+    - This view allows owners of books to manage booking requests for their books. Owners can **approve** or **reject**
+    booking requests, which affects the book's status and potentially deletes other pending requests for the same book.
+    - If for example book owner approves one of the requests, the other booking requests will be deleted, the user that
+    made booking request will be set as the new owner of a book and the `available` field of a book will be set to **False**.
+    - But on the other hand if the owner rejects one of the requests, the request will be **deleted**.
+
+    **Authentication:**
+
+    - Authentication is required for making a request.
+    - Only owners of the books associated with the booking requests can perform management actions.
+
+    **Supported Operations:**
+
+    - `update (PUT)`: Enables book owner to either **approve** or **reject** booking requests from users.
+
+    **Request Body:**
+
+    - Update (PUT) requires the following fields:
+        - `approve`: A **boolean** field indicating whether to **approve (True)** or **reject (False)** the booking request.
+
+    **Responses:**
+
+    - Successful management actions will return status code **200 (OK)**.
+    - Unauthenticated users will receive a status code **401 (Unauthorized)**.
+    - Users who are not owners of the associated book will receive a status code **403 (Forbidden)**.
+    - If user does not pass the value of type **boolean** to the request they will receive a status code **400 (Bad Request)**.
+    """
+
+    # Only one required value is being passed so there is no need for partial updates.
+    http_method_names = ["put"]
+    queryset = BookingRequest.objects.all()
+    serializer_class = ManageBookingRequestSerializer
+    permission_classes = [IsBookOwner]
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            approve = serializer.validated_data.get("approve")
+            process_booking_request(instance, approve)
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

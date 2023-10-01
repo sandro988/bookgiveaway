@@ -10,26 +10,30 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             "owner",
             "requester",
             "status",
-            "request_selected",
         ]
-        extra_kwargs = {"request_selected": {"default": False}}
 
     def validate(self, data):
         """
-        Custom validation to ensure the owner cannot request their own book.
+        Custom validation to ensure that:
+        - Users can not create duplicate booking requests.
+        - The book owner cannot request their own book.
+        - Users can not create booking requests for books with `available` field set to False.
+
         """
         book = data["book"]
         requester = self.context["request"].user
+        available = book.available
 
-        existing_request = BookingRequest.objects.filter(
-            book=book, requester=requester
-        ).exists()
-
-        if existing_request:
+        if BookingRequest.objects.filter(book=book, requester=requester).exists():
             raise serializers.ValidationError("You have already requested this book.")
 
         if book.owner == requester:
             raise serializers.ValidationError("You cannot request your own book.")
+
+        if not available:
+            raise serializers.ValidationError(
+                "This book is not available at this moment."
+            )
 
         return data
 
@@ -45,8 +49,8 @@ class RetrieveUpdateDeleteBookingRequestSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "requester",
             "status",
-            "request_selected",
         ]
-        extra_kwargs = {
-            "request_selected": {"default": False},
-        }
+
+
+class ManageBookingRequestSerializer(serializers.Serializer):
+    approve = serializers.BooleanField(required=True)

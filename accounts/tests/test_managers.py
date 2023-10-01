@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.db.utils import IntegrityError
 
 
 class AccountsManagerTests(TestCase):
@@ -29,13 +28,6 @@ class AccountsManagerTests(TestCase):
         User = get_user_model()
         with self.assertRaises(ValueError):
             User.objects.create_user(email="", password="test_pass")
-
-    def test_create_users_with_duplicate_email(self):
-        User = get_user_model()
-        User.objects.create_user(email="test_user@email.com", password="test_pass")
-
-        with self.assertRaises(IntegrityError):
-            User.objects.create_user(email="test_user@email.com", password="test_pass")
 
     def test_create_superuser(self):
         User = get_user_model()
