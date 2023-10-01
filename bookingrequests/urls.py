@@ -3,6 +3,8 @@ from .views import (
     BookingRequestListCreateView,
     BookingRequestDetailView,
     ManageBookingRequestView,
+    NotificationListView,
+    NotificationDetailView,
 )
 
 urlpatterns = [
@@ -20,5 +22,15 @@ urlpatterns = [
         "manage/<uuid:pk>/",
         ManageBookingRequestView.as_view(),
         name="manage-booking-request",
+    ),
+    path(
+        "notifications/",
+        NotificationListView.as_view(),
+        name="booking-notifications",
+    ),
+    path(
+        "notifications/<int:pk>/",
+        NotificationDetailView.as_view(),
+        name="booking-notification-details",
     ),
 ]

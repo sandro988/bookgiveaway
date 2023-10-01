@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 from environs import Env
+import socket
+
+hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+INTERNAL_IPS = [ip[:-1] + "1" for ip in ips]
 
 env = Env()
 env.read_env()
@@ -47,6 +51,7 @@ INSTALLED_APPS = [
     "dj_rest_auth",
     "drf_spectacular",
     "django_filters",
+    "debug_toolbar",
     # Local apps
     "accounts.apps.AccountsConfig",
     "books.apps.BooksConfig",
@@ -63,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = "book_giveaway.urls"

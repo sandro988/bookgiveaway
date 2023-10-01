@@ -32,3 +32,13 @@ class IsBookOwner(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return obj.book.owner == request.user
+
+
+class NotificationBelongsToUser(permissions.BasePermission):
+    """
+    Custom permission to check if the user making a request is the owner/receiver of the notication.
+    This permission class ensures that only this user can manage notifications.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        return obj.user == request.user

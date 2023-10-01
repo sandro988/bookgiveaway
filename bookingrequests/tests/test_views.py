@@ -6,6 +6,7 @@ from rest_framework import status
 from books.tests.test_views import UserTestsData
 from bookingrequests.models import BookingRequest, Notification
 from books.models import Book, Genre, Author
+import json
 
 
 class ListCreateBookingRequestsTestClass(APITestCase, UserTestsData):
@@ -708,3 +709,39 @@ class ManageRequestsTestClass(APITestCase, UserTestsData):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Book.objects.count(), 1)
+
+    def test_notification_listing(self):
+        # First approving the request so that the requester gets notification
+        response = self.client.put(
+            self.url,
+            data={"approve": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        notification = Notification.objects.last().id
+
+        # Authenticating as the user whos booking request got approved
+        token = Token.objects.create(user=self.user1)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+        # Sending GET request to see users request.
+        url = reverse("booking-notifications")
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Accessing individual notifications
+        url = reverse("booking-notification-details", kwargs={"pk": notification})
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Trying to delete notification.
+        response = self.client.delete(url, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Trying to access notification that does not exist
+        another_url = reverse("booking-notification-details", kwargs={"pk": 1234567890})
+        response = self.client.delete(another_url, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

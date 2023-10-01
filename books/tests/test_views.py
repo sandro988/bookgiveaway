@@ -179,7 +179,6 @@ class BookRetrieveUpdateDeleteViewTests(APITestCase, UserTestsData):
             self.data_for_update,
             format="json",
         )
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.book.refresh_from_db()
         self.assertEqual(self.book.title, "Updated Title")

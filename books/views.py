@@ -5,6 +5,7 @@ from .serializers import BookSerializer, GenreSerializer, AuthorSerializer
 from .permissions import IsOwnerOrReadOnly
 from .filters import BookFilter
 from .models import Book, Genre, Author
+from django.db.models import Prefetch
 
 
 class BookViewSet(ModelViewSet):
@@ -44,7 +45,7 @@ class BookViewSet(ModelViewSet):
     """
 
     serializer_class = BookSerializer
-    queryset = Book.objects.all()
+    queryset = Book.objects.all().prefetch_related("genre", "author")
     filterset_class = BookFilter
     permission_classes = (IsOwnerOrReadOnly,)
 

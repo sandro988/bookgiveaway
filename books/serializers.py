@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import Genre, Book, Author
-from .utils import transform_genres_and_authors
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -35,6 +34,16 @@ class BookSerializer(serializers.ModelSerializer):
         read_only_fields = ["owner", "owner_email"]
 
     def to_internal_value(self, data):
-        data = transform_genres_and_authors(data, "genre", Genre)
-        data = transform_genres_and_authors(data, "author", Author)
+        genre_names = data.get("genre", [])
+        data["genre"] = [
+            Genre.objects.get_or_create(genre_name=genre.capitalize())[0]
+            for genre in genre_names
+        ]
+
+        author_names = data.get("author", [])
+        data["author"] = [
+            Author.objects.get_or_create(author_name=author.title())[0]
+            for author in author_names
+        ]
+
         return super().to_internal_value(data)

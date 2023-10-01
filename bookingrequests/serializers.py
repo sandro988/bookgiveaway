@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BookingRequest
+from .models import BookingRequest, Notification
 
 
 class BookingRequestSerializer(serializers.ModelSerializer):
@@ -54,3 +54,9 @@ class RetrieveUpdateDeleteBookingRequestSerializer(serializers.ModelSerializer):
 
 class ManageBookingRequestSerializer(serializers.Serializer):
     approve = serializers.BooleanField(required=True)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = "__all__"

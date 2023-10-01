@@ -1,7 +1,9 @@
 from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
+    RetrieveDestroyAPIView,
     ListCreateAPIView,
     UpdateAPIView,
+    ListAPIView,
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,10 +11,15 @@ from .serializers import (
     BookingRequestSerializer,
     RetrieveUpdateDeleteBookingRequestSerializer,
     ManageBookingRequestSerializer,
+    NotificationSerializer,
 )
-from .permissions import IsRequesterOrOwnerRetrieveOnly, IsBookOwner
-from .models import BookingRequest
+from .permissions import (
+    IsRequesterOrOwnerRetrieveOnly,
+    NotificationBelongsToUser,
+    IsBookOwner,
+)
 from .utils import process_booking_request
+from .models import BookingRequest
 from .models import Notification
 
 
@@ -65,7 +72,9 @@ class BookingRequestListCreateView(ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated:
-            return BookingRequest.objects.filter(book__owner=user)
+            return BookingRequest.objects.filter(book__owner=user).select_related(
+                "book", "requester"
+            )
 
         return BookingRequest.objects.none()
 
@@ -189,7 +198,7 @@ class ManageBookingRequestView(UpdateAPIView):
 
     # Only one required value is being passed, so there is no need for partial updates.
     http_method_names = ["put"]
-    queryset = BookingRequest.objects.all()
+    queryset = BookingRequest.objects.all().select_related("book", "requester")
     serializer_class = ManageBookingRequestSerializer
     permission_classes = [IsBookOwner]
 
@@ -218,3 +227,68 @@ class ManageBookingRequestView(UpdateAPIView):
             return Response(serializer.data)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NotificationListView(ListAPIView):
+    """
+    **API Endpoint for Listing User Notifications.**
+
+    - This view allows authenticated users to retrieve a list of their notifications.
+    - Notifications are like messages sent to users when a book owner approves or
+    rejects their booking requests.
+    - Notification consisists of the book name, approved boolean field and information
+    about book retrieval location(Only approved users get location).
+
+    **Authentication:**
+
+    - Authentication is required for making this request.
+    - Users can only access their own notifications.
+
+    **Supported Operations:**
+
+    - `list (GET)`: Retrieves a list of notifications for the authenticated user.
+
+    **Responses:**
+
+    - Successful retrieval will return status code **200 (OK)**.
+    - Unauthenticated users will receive a status code **401 (Unauthorized)**.
+    """
+
+    serializer_class = NotificationSerializer
+    permission_classes = (NotificationBelongsToUser,)
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return Notification.objects.filter(user=self.request.user)
+
+        return BookingRequest.objects.none()
+
+
+class NotificationDetailView(RetrieveDestroyAPIView):
+    """
+    **API Endpoint for Viewing and Deleting User Notifications.**
+
+    This view allows authenticated users to view and delete their notifications.
+    Notifications are like messages sent to users when a book owner approves or rejects their booking requests.
+
+    **Authentication:**
+
+    - Authentication is required for making every request.
+    - Users can only access and delete their own notifications.
+
+    **Supported Operations:**
+
+    - `retrieve (GET)`: Retrieves the details of a specific notification.
+    - `destroy (DELETE)`: Deletes a specific notification.
+
+    **Responses:**
+
+    - Successful retrieval will return status code **200 (OK)**.
+    - Successful deletion will return status code **204 (No Content)**.
+    - Unauthenticated users will receive a status code **401 (Unauthorized)**.
+    """
+
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = (NotificationBelongsToUser,)
