@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import BookingRequest
+from .models import Notification
 
 
 class BookingRequestAdmin(admin.ModelAdmin):
@@ -8,3 +9,4 @@ class BookingRequestAdmin(admin.ModelAdmin):
 
 
 admin.site.register(BookingRequest, BookingRequestAdmin)
+admin.site.register(Notification)

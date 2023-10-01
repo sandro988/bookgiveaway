@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from books.tests.test_views import UserTestsData
-from bookingrequests.models import BookingRequest
+from bookingrequests.models import BookingRequest, Notification
 from books.models import Book, Genre, Author
 
 
@@ -556,7 +556,7 @@ class ManageRequestsTestClass(APITestCase, UserTestsData):
         # Check that all of the booking requests were deleted and
         # the book has new owner and is not available any more.
         # New owner in this instance should be 'user1' with the email
-        # of 'requester_1@email.com'
+        # of 'requester_1@email.com'.
 
         self.book.refresh_from_db()
         self.assertEqual(BookingRequest.objects.count(), 0)
@@ -572,6 +572,14 @@ class ManageRequestsTestClass(APITestCase, UserTestsData):
         self.assertEqual(self.book.owner, self.user1)
         self.assertEqual(self.book.owner.email, "requester_1@email.com")
         self.assertEqual(self.book.available, False)
+
+        # Checking that the notification was created.
+        self.assertEqual(Notification.objects.count(), 1)
+        notification = Notification.objects.last()
+        self.assertEqual(notification.user, self.user1)
+        self.assertEqual(notification.book, self.book.title)
+        self.assertEqual(notification.approved, True)
+        self.assertEqual(notification.retrieval_location, self.book.retrieval_location)
 
     def test_manage_booking_request_with_rejected_status(self):
         response = self.client.put(
@@ -596,6 +604,13 @@ class ManageRequestsTestClass(APITestCase, UserTestsData):
         self.assertEqual(self.book.owner.email, "test_user@email.com")
         self.assertEqual(self.book.available, True)
 
+        # Checking that the notification was created but with approved field set to False.
+        self.assertEqual(Notification.objects.count(), 1)
+        notification = Notification.objects.last()
+        self.assertEqual(notification.user, self.user1)
+        self.assertEqual(notification.book, self.book.title)
+        self.assertEqual(notification.approved, False)
+
     def test_manage_booking_request_with_invalid_status(self):
         response = self.client.put(
             self.url,
@@ -609,6 +624,9 @@ class ManageRequestsTestClass(APITestCase, UserTestsData):
         self.assertEqual(self.book.owner, self.user)
         self.assertEqual(self.book.owner.email, "test_user@email.com")
         self.assertEqual(self.book.available, True)
+
+        # Checking that the notification was not created.
+        self.assertNotEqual(Notification.objects.count(), 1)
 
     def test_manage_booking_request_with_unauthenticated_user(self):
         client = self.client_class()
@@ -632,3 +650,61 @@ class ManageRequestsTestClass(APITestCase, UserTestsData):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_previous_owner_can_not_update_book(self):
+        # Testing that previous users no longer have permissions to delete new owners books.
+        data_for_update = {
+            "title": "Updated Title",
+            "author": ["Stan Lee", "Charles Dickens"],
+            "genre": ["Comics", "History"],
+            "ISBN": "11111111",
+            "retrieval_location": "Updated Location",
+            "description": "Updated description",
+        }
+        update_url = reverse("books-detail", kwargs={"pk": self.book.pk})
+
+        # First approving the users booking request
+        response = self.client.put(
+            self.url,
+            data={"approve": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        notification = Notification.objects.last()
+        self.assertNotEqual(notification.user, self.user)
+        self.assertEqual(notification.user, self.user1)
+
+        # Trying to update the book as a previous owner.
+        response = self.client.put(
+            update_url,
+            data_for_update,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.book.refresh_from_db()
+        self.assertNotEqual(self.book.title, "Updated Title")
+        self.assertNotEqual(self.book.description, "Updated description")
+        self.assertNotEqual(
+            [genre.genre_name for genre in self.book.genre.all()], ["Comics", "History"]
+        )
+
+    def test_previous_owner_can_not_delete_book(self):
+        delete_url = reverse("books-detail", kwargs={"pk": self.book.pk})
+
+        # First approving the users booking request
+        response = self.client.put(
+            self.url,
+            data={"approve": True},
+            format="json",
+        )
+
+        # Trying to delete a book
+        response = self.client.delete(
+            delete_url,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Book.objects.count(), 1)

@@ -13,6 +13,7 @@ from .serializers import (
 from .permissions import IsRequesterOrOwnerRetrieveOnly, IsBookOwner
 from .models import BookingRequest
 from .utils import process_booking_request
+from .models import Notification
 
 
 class BookingRequestListCreateView(ListCreateAPIView):
@@ -147,11 +148,16 @@ class ManageBookingRequestView(UpdateAPIView):
     """
     **API Endpoint for Managing Booking Requests.**
 
-    - This view allows owners of books to manage booking requests for their books. Owners can **approve** or **reject**
-    booking requests, which affects the book's status and potentially deletes other pending requests for the same book.
-    - If for example book owner approves one of the requests, the other booking requests will be deleted, the user that
-    made booking request will be set as the new owner of a book and the `available` field of a book will be set to **False**.
-    - But on the other hand if the owner rejects one of the requests, the request will be **deleted**.
+    This view allows owners of books to manage booking requests for their books. Owners can approve or reject booking
+    requests, which affects the book's status and potentially deletes other pending requests for the same book.
+
+    If the book owner approves a request:
+    - The user who made the booking request becomes the new owner of the book.
+    - The book's availability is set to False.
+    - All other pending booking requests for the same book are deleted.
+
+    If the book owner rejects a request:
+    - the request is simply deleted.
 
     **Authentication:**
 
@@ -160,22 +166,28 @@ class ManageBookingRequestView(UpdateAPIView):
 
     **Supported Operations:**
 
-    - `update (PUT)`: Enables book owner to either **approve** or **reject** booking requests from users.
+    - `update (PUT)`: Allows book owners to approve or reject booking requests from users.
 
     **Request Body:**
 
     - Update (PUT) requires the following fields:
-        - `approve`: A **boolean** field indicating whether to **approve (True)** or **reject (False)** the booking request.
+        - `approve` (boolean): Indicates whether to approve (True) or reject (False) the booking request.
 
     **Responses:**
 
-    - Successful management actions will return status code **200 (OK)**.
-    - Unauthenticated users will receive a status code **401 (Unauthorized)**.
-    - Users who are not owners of the associated book will receive a status code **403 (Forbidden)**.
-    - If user does not pass the value of type **boolean** to the request they will receive a status code **400 (Bad Request)**.
+    - Successful management actions will return status code 200 (OK).
+    - Unauthenticated users will receive a status code 401 (Unauthorized).
+    - Users who are not owners of the associated book will receive a status code 403 (Forbidden).
+    - If the user does not pass a boolean value in the request, they will receive a status code 400 (Bad Request).
+    - Notifications are created to inform the user whose booking request was approved or rejected.
+
+    Notifications:
+    - If the booking request is approved, a notification is created with details about the book's retrieval location, title and etc.
+    - If the booking request is rejected, a notification is created to inform the user about the rejection, in this case,
+    retrieval location will not be included in the notification.
     """
 
-    # Only one required value is being passed so there is no need for partial updates.
+    # Only one required value is being passed, so there is no need for partial updates.
     http_method_names = ["put"]
     queryset = BookingRequest.objects.all()
     serializer_class = ManageBookingRequestSerializer
@@ -187,7 +199,22 @@ class ManageBookingRequestView(UpdateAPIView):
 
         if serializer.is_valid():
             approve = serializer.validated_data.get("approve")
+            if approve:
+                Notification.objects.create(
+                    user=instance.requester,
+                    book=instance.book,
+                    approved=True,
+                    retrieval_location=instance.book.retrieval_location,
+                )
+            else:
+                Notification.objects.create(
+                    user=instance.requester,
+                    book=instance.book,
+                    approved=False,
+                )
             process_booking_request(instance, approve)
+
+            instance.book.save()
             return Response(serializer.data)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
